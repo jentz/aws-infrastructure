@@ -3,8 +3,8 @@ resource "random_id" "suffix" {
 }
 
 resource "aws_s3_bucket" "this" {
-  bucket        = "${var.name_prefix}-${random_id.suffix.hex}"
-  tags          = var.tags
+  bucket = "${var.name_prefix}-${random_id.suffix.hex}"
+  tags   = var.tags
 }
 
 resource "aws_s3_bucket_website_configuration" "this" {

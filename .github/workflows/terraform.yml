@@ -1,0 +1,58 @@
+name: Terraform
+
+on:
+  pull_request:
+    paths:
+      - 'terraform/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+
+permissions:
+      id-token: write
+      contents: read
+
+jobs:
+  terraform:
+    name: Terraform Plan & Apply
+    runs-on: ubuntu-latest
+
+    env:
+      TF_IN_AUTOMATION: "true"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::567516037984:role/github-actions-role
+          aws-region: eu-west-1
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Find Terraform project directories
+        id: find-dirs
+        run: |
+          # Find subdirectories in terraform/ except modules/
+          dirs=$(find terraform -mindepth 1 -maxdepth 1 -type d ! -name modules -exec basename {} \;)
+          echo "DIRS=$dirs" >> $GITHUB_ENV
+
+      - name: Run Terraform Plan or Apply
+        run: |
+          for d in $DIRS; do
+            cd terraform/$d
+            echo "::group::Running in terraform/$d"
+            terraform init -input=false
+            if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+              terraform plan -input=false -out=plan.out
+            else
+              terraform apply -input=false -auto-approve plan.out || terraform apply -input=false -auto-approve
+            fi
+            echo "::endgroup::"
+            cd ../..
+          done

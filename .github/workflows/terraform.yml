@@ -39,14 +39,14 @@ jobs:
         id: find-dirs
         run: |
           # Find subdirectories in terraform/ except modules/
-          dirs=$(find terraform -mindepth 1 -maxdepth 1 -type d ! -name modules -exec basename {} \;)
-          echo "DIRS=$dirs" >> $GITHUB_ENV
+          find terraform -mindepth 1 -maxdepth 1 -type d ! -name modules > dirs.txt
+          cat dirs.txt
 
       - name: Run Terraform Plan or Apply
         run: |
-          for d in $DIRS; do
-            cd terraform/$d
-            echo "::group::Running in terraform/$d"
+          while read d; do
+            cd "$d"
+            echo "::group::Running in $d"
             terraform init -input=false
             if [[ "${{ github.event_name }}" == "pull_request" ]]; then
               terraform plan -input=false -out=plan.out
@@ -55,4 +55,4 @@ jobs:
             fi
             echo "::endgroup::"
             cd ../..
-          done
+          done < dirs.txt

@@ -44,7 +44,6 @@ resource "aws_route53_record" "jentz_co_soa" {
 
 resource "aws_route53_record" "jentz_co_txt" {
   name           = "jentz.co"
-  set_identifier = null
   ttl            = 300
   type           = "TXT"
   zone_id        = aws_route53_zone.jentz_co.zone_id

@@ -22,10 +22,10 @@ resource "aws_route53_record" "jentz_co_mx" {
 }
 
 resource "aws_route53_record" "jentz_co_ns" {
-  name            = "jentz.co"
-  ttl             = 172800
-  type            = "NS"
-  zone_id         = aws_route53_zone.jentz_co.zone_id
+  name    = "jentz.co"
+  ttl     = 172800
+  type    = "NS"
+  zone_id = aws_route53_zone.jentz_co.zone_id
   records = [
     "ns-1473.awsdns-56.org.",
     "ns-1983.awsdns-55.co.uk.",
@@ -35,19 +35,19 @@ resource "aws_route53_record" "jentz_co_ns" {
 }
 
 resource "aws_route53_record" "jentz_co_soa" {
-  name            = "jentz.co"
-  ttl             = 900
-  type            = "SOA"
-  zone_id         = aws_route53_zone.jentz_co.zone_id
-  records         = ["ns-782.awsdns-33.net. awsdns-hostmaster.amazon.com. 1 7200 900 1209600 86400"]
+  name    = "jentz.co"
+  ttl     = 900
+  type    = "SOA"
+  zone_id = aws_route53_zone.jentz_co.zone_id
+  records = ["ns-782.awsdns-33.net. awsdns-hostmaster.amazon.com. 1 7200 900 1209600 86400"]
 }
 
 resource "aws_route53_record" "jentz_co_txt" {
-  name           = "jentz.co"
-  ttl            = 300
-  type           = "TXT"
-  zone_id        = aws_route53_zone.jentz_co.zone_id
-  records        = ["v=spf1 include:spf.messagingengine.com ?all"]
+  name    = "jentz.co"
+  ttl     = 300
+  type    = "TXT"
+  zone_id = aws_route53_zone.jentz_co.zone_id
+  records = ["v=spf1 include:spf.messagingengine.com ?all"]
 }
 
 resource "aws_route53_record" "jentz_co_dkim1" {

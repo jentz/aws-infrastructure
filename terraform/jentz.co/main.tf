@@ -22,7 +22,7 @@ module "jentz_co_amplify" {
   }
 
   tags = {
-    Project = "Website"
+    Project = "jentz.co"
     Env     = "prod"
   }
 }

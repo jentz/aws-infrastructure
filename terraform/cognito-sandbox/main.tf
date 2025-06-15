@@ -21,12 +21,12 @@ import {
 }
 
 resource "aws_cognito_user_pool" "pool" {
-  alias_attributes           = ["email"]
-  auto_verified_attributes   = ["email"]
-  deletion_protection        = "ACTIVE"
-  mfa_configuration          = "OFF"
-  name                       = "User pool - d3t5g8"
-  user_pool_tier             = "ESSENTIALS"
+  alias_attributes         = ["email"]
+  auto_verified_attributes = ["email"]
+  deletion_protection      = "ACTIVE"
+  mfa_configuration        = "OFF"
+  name                     = "User pool - d3t5g8"
+  user_pool_tier           = "ESSENTIALS"
   account_recovery_setting {
     recovery_mechanism {
       name     = "verified_email"
@@ -63,8 +63,8 @@ resource "aws_cognito_user_pool" "pool" {
     name                     = "email"
     required                 = true
     string_attribute_constraints {
-      max_length = jsonencode(2048)
-      min_length = jsonencode(0)
+      max_length = 2048
+      min_length = 0
     }
   }
   schema {
@@ -74,8 +74,8 @@ resource "aws_cognito_user_pool" "pool" {
     name                     = "family_name"
     required                 = true
     string_attribute_constraints {
-      max_length = jsonencode(2048)
-      min_length = jsonencode(0)
+      max_length = 2048
+      min_length = 0
     }
   }
   schema {
@@ -85,8 +85,8 @@ resource "aws_cognito_user_pool" "pool" {
     name                     = "given_name"
     required                 = true
     string_attribute_constraints {
-      max_length = jsonencode(2048)
-      min_length = jsonencode(0)
+      max_length = 2048
+      min_length = 0
     }
   }
   sign_in_policy {
@@ -103,7 +103,7 @@ resource "aws_cognito_user_pool" "pool" {
     email_subject_by_link = null
     sms_message           = null
   }
-  
+
 }
 
 import {
@@ -171,5 +171,3 @@ resource "aws_cognito_user_pool_client" "confidential_client" {
     refresh_token = "days"
   }
 }
-
-

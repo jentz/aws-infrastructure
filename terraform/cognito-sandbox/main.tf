@@ -2,22 +2,11 @@ provider "aws" {
   region = "eu-west-1"
 }
 
-import {
-  to = aws_cognito_user_pool_domain.main
-  id = "eu-west-1r7zfnvwv0"
-}
-
 resource "aws_cognito_user_pool_domain" "main" {
   certificate_arn       = null
   domain                = "eu-west-1r7zfnvwv0"
   managed_login_version = 2
   user_pool_id          = aws_cognito_user_pool.pool.id
-}
-
-#
-import {
-  to = aws_cognito_user_pool.pool
-  id = "eu-west-1_R7Zfnvwv0"
 }
 
 resource "aws_cognito_user_pool" "pool" {
@@ -104,16 +93,6 @@ resource "aws_cognito_user_pool" "pool" {
     sms_message           = null
   }
 
-}
-
-import {
-  to = aws_cognito_user_pool_client.public_client
-  id = "eu-west-1_R7Zfnvwv0/2uc1bc2vfstfp198uvq8shsepa"
-}
-
-import {
-  to = aws_cognito_user_pool_client.confidential_client
-  id = "eu-west-1_R7Zfnvwv0/39askr3efqggd2djrimgijpbcr"
 }
 
 resource "aws_cognito_user_pool_client" "public_client" {

@@ -3,7 +3,6 @@ provider "aws" {
 }
 
 resource "aws_cognito_user_pool_domain" "main" {
-  certificate_arn       = null
   domain                = "eu-west-1r7zfnvwv0"
   managed_login_version = 2
   user_pool_id          = aws_cognito_user_pool.pool.id
@@ -14,7 +13,7 @@ resource "aws_cognito_user_pool" "pool" {
   auto_verified_attributes = ["email"]
   deletion_protection      = "ACTIVE"
   mfa_configuration        = "OFF"
-  name                     = "User pool - d3t5g8"
+  name                     = "Test user pool"
   user_pool_tier           = "ESSENTIALS"
   account_recovery_setting {
     recovery_mechanism {
@@ -30,19 +29,15 @@ resource "aws_cognito_user_pool" "pool" {
     allow_admin_create_user_only = false
   }
   email_configuration {
-    configuration_set      = null
     email_sending_account  = "COGNITO_DEFAULT"
-    from_email_address     = null
-    reply_to_email_address = null
-    source_arn             = null
   }
   password_policy {
     minimum_length                   = 8
     password_history_size            = 0
-    require_lowercase                = true
-    require_numbers                  = true
-    require_symbols                  = true
-    require_uppercase                = true
+    require_lowercase                = false
+    require_numbers                  = false
+    require_symbols                  = false
+    require_uppercase                = false
     temporary_password_validity_days = 7
   }
   schema {
@@ -86,11 +81,6 @@ resource "aws_cognito_user_pool" "pool" {
   }
   verification_message_template {
     default_email_option  = "CONFIRM_WITH_CODE"
-    email_message         = null
-    email_message_by_link = null
-    email_subject         = null
-    email_subject_by_link = null
-    sms_message           = null
   }
 
 }
@@ -109,7 +99,7 @@ resource "aws_cognito_user_pool_client" "public_client" {
   generate_secret                               = null
   id_token_validity                             = 60
   logout_urls                                   = []
-  name                                          = "My SPA app - ghz1nk"
+  name                                          = "public auth code client"
   prevent_user_existence_errors                 = "ENABLED"
   read_attributes                               = []
   refresh_token_validity                        = 5

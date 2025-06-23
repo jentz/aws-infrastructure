@@ -140,3 +140,46 @@ resource "aws_cognito_user_pool_client" "confidential_client" {
     refresh_token = "days"
   }
 }
+
+resource "aws_cognito_user_pool_client" "confidential_client_2" {
+  access_token_validity                         = 60
+  allowed_oauth_flows                           = ["code"]
+  allowed_oauth_flows_user_pool_client          = true
+  allowed_oauth_scopes                          = ["email", "openid", "phone", "profile"]
+  auth_session_validity                         = 3
+  callback_urls                                 = ["http://localhost:9555/callback", "https://d84l1y8p4kdic.cloudfront.net"]
+  default_redirect_uri                          = null
+  enable_propagate_additional_user_context_data = false
+  enable_token_revocation                       = true
+  explicit_auth_flows                           = ["ALLOW_REFRESH_TOKEN_AUTH", "ALLOW_USER_AUTH", "ALLOW_USER_SRP_AUTH"]
+  generate_secret                               = true
+  id_token_validity                             = 60
+  logout_urls                                   = []
+  name                                          = "confidential auth code client 2"
+  prevent_user_existence_errors                 = "ENABLED"
+  read_attributes                               = []
+  refresh_token_validity                        = 5
+  supported_identity_providers                  = ["COGNITO"]
+  user_pool_id                                  = aws_cognito_user_pool.pool.id
+  write_attributes                              = []
+  token_validity_units {
+    access_token  = "minutes"
+    id_token      = "minutes"
+    refresh_token = "days"
+  }
+}
+
+resource "aws_ssm_parameter" "confidential_client_2_id" {
+  name        = "/cognito/confidential_client_2/id"
+  description = "Cognito client id for confidential_client_2"
+  type        = "String"
+  value       = aws_cognito_user_pool_client.confidential_client_2.id
+}
+
+resource "aws_ssm_parameter" "confidential_client_2_secret" {
+  name        = "/cognito/confidential_client_2/secret"
+  description = "Cognito client secret for confidential_client_2"
+  type        = "SecureString"
+  value       = aws_cognito_user_pool_client.confidential_client_2.client_secret
+}
+

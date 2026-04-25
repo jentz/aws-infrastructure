@@ -62,26 +62,30 @@ resource "aws_iam_role_policy_attachment" "github_actions_admin" {
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
+data "aws_iam_policy_document" "github_actions_plan_assume" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.github.arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = ["repo:jentz/aws-infrastructure:environment:plan"]
+    }
+  }
+}
+
 resource "aws_iam_role" "github_actions_plan" {
-  name = "github-actions-plan-role"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Federated = aws_iam_openid_connect_provider.github.arn
-        }
-        Action = "sts:AssumeRoleWithWebIdentity"
-        Condition = {
-          StringEquals = {
-            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-            "token.actions.githubusercontent.com:sub" = "repo:jentz/aws-infrastructure:environment:plan"
-          }
-        }
-      }
-    ]
-  })
+  name               = "github-actions-plan-role"
+  assume_role_policy = data.aws_iam_policy_document.github_actions_plan_assume.json
 }
 
 resource "aws_iam_role_policy_attachment" "github_actions_plan_readonly" {
@@ -89,46 +93,35 @@ resource "aws_iam_role_policy_attachment" "github_actions_plan_readonly" {
   policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
 }
 
-resource "aws_iam_role_policy" "github_actions_plan_state_read" {
-  name = "tf-state-read"
-  role = aws_iam_role.github_actions_plan.id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["s3:ListBucket"]
-        Resource = module.terraform_state_s3.bucket_arn
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["s3:GetObject"]
-        Resource = "${module.terraform_state_s3.bucket_arn}/*"
-      }
-    ]
-  })
+data "aws_iam_policy_document" "github_actions_deploy_assume" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.github.arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = ["repo:jentz/aws-infrastructure:environment:deploy"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:ref"
+      values   = ["refs/heads/main"]
+    }
+  }
 }
 
 resource "aws_iam_role" "github_actions_deploy" {
-  name = "github-actions-deploy-role"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Federated = aws_iam_openid_connect_provider.github.arn
-        }
-        Action = "sts:AssumeRoleWithWebIdentity"
-        Condition = {
-          StringEquals = {
-            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-            "token.actions.githubusercontent.com:sub" = "repo:jentz/aws-infrastructure:environment:deploy"
-          }
-        }
-      }
-    ]
-  })
+  name               = "github-actions-deploy-role"
+  assume_role_policy = data.aws_iam_policy_document.github_actions_deploy_assume.json
 }
 
 resource "aws_iam_role_policy_attachment" "github_actions_deploy_admin" {

@@ -69,9 +69,8 @@ jobs:
             terraform/${{ matrix.dir }}/plan.txt
           retention-days: 5
 
-  comment:
-    name: Comment plan on PR
-    if: github.event_name == 'pull_request'
+  summary:
+    name: Plan summary
     needs: plan
     runs-on: ubuntu-latest
     steps:
@@ -81,7 +80,7 @@ jobs:
           pattern: plan-*
           path: plans
 
-      - name: Post sticky plan comment
+      - name: Write run summary and sticky PR comment
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
@@ -96,21 +95,41 @@ jobs:
               .filter(d => d.startsWith('plan-'))
               .sort();
 
+            const renderSection = (projectDir, text) =>
+              `<details><summary>terraform/${projectDir}</summary>\n\n\`\`\`hcl\n${text}\n\`\`\`\n\n</details>`;
+
             const sections = dirs.map(d => {
               const projectDir = d.replace(/^plan-/, '');
               const planPath = path.join('plans', d, 'plan.txt');
-              let text = fs.existsSync(planPath) ? fs.readFileSync(planPath, 'utf8') : '(plan.txt missing)';
-              let footer = '';
-              if (text.length > PER_DIR_CAP) {
-                text = text.slice(0, PER_DIR_CAP);
-                footer = '\n\n... (truncated; see Actions log for full plan)';
-              }
-              return `<details><summary>terraform/${projectDir}</summary>\n\n\`\`\`hcl\n${text}${footer}\n\`\`\`\n\n</details>`;
+              const text = fs.existsSync(planPath) ? fs.readFileSync(planPath, 'utf8') : '(plan.txt missing)';
+              const capped = text.length > PER_DIR_CAP
+                ? text.slice(0, PER_DIR_CAP) + '\n\n... (truncated; see Actions log for full plan)'
+                : text;
+              return {
+                full: renderSection(projectDir, text),
+                capped: renderSection(projectDir, capped),
+              };
             });
 
-            let body = `${marker}\n## Terraform plan\n\n${sections.join('\n')}`;
-            if (body.length > TOTAL_CAP) {
-              body = body.slice(0, TOTAL_CAP) + '\n\n_(comment truncated; see Actions run for details)_';
+            const header = `${marker}\n## Terraform plan\n\n`;
+
+            await core.summary.addRaw(header + sections.map(s => s.full).join('\n')).write();
+
+            if (context.eventName !== 'pull_request') return;
+
+            const truncationNotice = '\n\n_(truncated; see Actions run for details)_';
+            const cappedBody = header + sections.map(s => s.capped).join('\n');
+            let comment = cappedBody;
+            if (cappedBody.length > TOTAL_CAP) {
+              const accepted = [];
+              let used = header.length + truncationNotice.length;
+              for (const s of sections) {
+                const cost = (accepted.length ? 1 : 0) + s.capped.length;
+                if (used + cost > TOTAL_CAP) break;
+                used += cost;
+                accepted.push(s.capped);
+              }
+              comment = header + accepted.join('\n') + truncationNotice;
             }
 
             const comments = await github.paginate(github.rest.issues.listComments, {
@@ -125,21 +144,21 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 comment_id: existing.id,
-                body,
+                body: comment,
               });
             } else {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body,
+                body: comment,
               });
             }
 
   apply:
     name: Apply
     if: github.event_name == 'push'
-    needs: plan
+    needs: [plan, summary]
     runs-on: ubuntu-latest
     environment: deploy
     steps:

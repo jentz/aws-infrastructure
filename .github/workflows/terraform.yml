@@ -11,17 +11,31 @@ on:
       - 'terraform/**'
 
 permissions:
-      id-token: write
-      contents: read
+  id-token: write
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_VERSION: "1.14.9"
+  AWS_REGION: "eu-west-1"
 
 jobs:
-  terraform:
-    name: Terraform Plan & Apply
+  plan:
+    name: Plan ${{ matrix.dir }}
     runs-on: ubuntu-latest
-
-    env:
-      TF_IN_AUTOMATION: "true"
-
+    environment: plan
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: [bootstrap, cognito-sandbox, common, jentz.co]
+    defaults:
+      run:
+        working-directory: terraform/${{ matrix.dir }}
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -29,34 +43,134 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
-          role-to-assume: arn:aws:iam::567516037984:role/github-actions-role
-          aws-region: eu-west-1
+          role-to-assume: arn:aws:iam::567516037984:role/github-actions-plan-role
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
         with:
-          terraform_version: 1.14.9
+          terraform_version: ${{ env.TF_VERSION }}
 
-      - name: Find Terraform project directories
-        id: find-dirs
+      - name: Terraform init
+        run: terraform init -input=false -lock=false
+
+      - name: Terraform plan
+        run: terraform plan -input=false -lock=false -no-color -out=plan.out
+
+      - name: Render plan to text
+        run: terraform show -no-color plan.out > plan.txt
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: plan-${{ matrix.dir }}
+          path: |
+            terraform/${{ matrix.dir }}/plan.out
+            terraform/${{ matrix.dir }}/plan.txt
+          retention-days: 5
+
+  comment:
+    name: Comment plan on PR
+    if: github.event_name == 'pull_request'
+    needs: plan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download plan artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: plan-*
+          path: plans
+
+      - name: Post sticky plan comment
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const marker = '<!-- terraform-plan -->';
+            // GitHub caps issue comments at 65535 chars; reserve headroom.
+            const PER_DIR_CAP = 12000;
+            const TOTAL_CAP = 60000;
+
+            const dirs = fs.readdirSync('plans')
+              .filter(d => d.startsWith('plan-'))
+              .sort();
+
+            const sections = dirs.map(d => {
+              const projectDir = d.replace(/^plan-/, '');
+              const planPath = path.join('plans', d, 'plan.txt');
+              let text = fs.existsSync(planPath) ? fs.readFileSync(planPath, 'utf8') : '(plan.txt missing)';
+              let footer = '';
+              if (text.length > PER_DIR_CAP) {
+                text = text.slice(0, PER_DIR_CAP);
+                footer = '\n\n... (truncated; see Actions log for full plan)';
+              }
+              return `<details><summary>terraform/${projectDir}</summary>\n\n\`\`\`hcl\n${text}${footer}\n\`\`\`\n\n</details>`;
+            });
+
+            let body = `${marker}\n## Terraform plan\n\n${sections.join('\n')}`;
+            if (body.length > TOTAL_CAP) {
+              body = body.slice(0, TOTAL_CAP) + '\n\n_(comment truncated; see Actions run for details)_';
+            }
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+  apply:
+    name: Apply
+    if: github.event_name == 'push'
+    needs: plan
+    runs-on: ubuntu-latest
+    environment: deploy
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Download plan artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: plan-*
+          path: plans
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
+        with:
+          role-to-assume: arn:aws:iam::567516037984:role/github-actions-deploy-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Apply each plan
         run: |
           set -euo pipefail
-          # Find subdirectories in terraform/ except modules/
-          find terraform -mindepth 1 -maxdepth 1 -type d ! -name modules -print0 > dirs.txt
-          cat dirs.txt
-
-      - name: Run Terraform Plan or Apply
-        run: |
-          set -euo pipefail
-          while IFS= read -r -d '' d; do
-            cd "$d"
-            echo "::group::Running in $d"
-            terraform init -input=false
-            if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-              terraform plan -input=false -out=plan.out
-            else
-              terraform apply -input=false -auto-approve plan.out || terraform apply -input=false -auto-approve
-            fi
+          for d in plans/plan-*; do
+            dir="${d#plans/plan-}"
+            echo "::group::Applying terraform/$dir"
+            cp "$d/plan.out" "terraform/$dir/plan.out"
+            terraform -chdir="terraform/$dir" init -input=false
+            terraform -chdir="terraform/$dir" apply -input=false plan.out
             echo "::endgroup::"
-            cd ../..
-          done < dirs.txt
+          done

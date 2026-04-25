@@ -8,8 +8,6 @@ module "jentz_co_amplify" {
   app_name       = "jentz-co"
   repository_url = "https://github.com/jentz/jentz.co"
 
-  github_access_token = var.github_access_token
-
   domain_name          = "jentz.co"
   enable_www_subdomain = true
   main_branch_name     = "main" # Change this if your main branch has a different name

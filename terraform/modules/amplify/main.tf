@@ -2,10 +2,6 @@ resource "aws_amplify_app" "this" {
   name       = var.app_name
   repository = var.repository_url
 
-  # Only include access_token when github_access_token is set
-  access_token = try(length(var.github_access_token) > 0 ? var.github_access_token : tostring({}), null)
-
-
   # Hugo build settings
   build_spec = <<-EOT
     version: 1

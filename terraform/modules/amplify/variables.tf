@@ -8,12 +8,6 @@ variable "repository_url" {
   type        = string
 }
 
-variable "github_access_token" {
-  description = "GitHub personal access token for repository access"
-  type        = string
-  sensitive   = true
-}
-
 variable "domain_name" {
   description = "Domain name to associate with the Amplify app"
   type        = string

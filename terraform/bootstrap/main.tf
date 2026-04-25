@@ -49,7 +49,10 @@ data "aws_iam_policy_document" "github_actions_plan_assume" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:jentz/aws-infrastructure:environment:plan"]
+      values = [
+        "repo:jentz/aws-infrastructure:pull_request",
+        "repo:jentz/aws-infrastructure:ref:refs/heads/main",
+      ]
     }
   }
 }

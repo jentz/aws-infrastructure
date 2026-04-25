@@ -61,3 +61,70 @@ resource "aws_iam_role_policy_attachment" "github_actions_admin" {
   role       = aws_iam_role.github_actions.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
+
+data "aws_iam_policy_document" "github_actions_plan_assume" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.github.arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = ["repo:jentz/aws-infrastructure:environment:plan"]
+    }
+  }
+}
+
+resource "aws_iam_role" "github_actions_plan" {
+  name               = "github-actions-plan-role"
+  assume_role_policy = data.aws_iam_policy_document.github_actions_plan_assume.json
+}
+
+resource "aws_iam_role_policy_attachment" "github_actions_plan_readonly" {
+  role       = aws_iam_role.github_actions_plan.name
+  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+}
+
+data "aws_iam_policy_document" "github_actions_deploy_assume" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.github.arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = ["repo:jentz/aws-infrastructure:environment:deploy"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:ref"
+      values   = ["refs/heads/main"]
+    }
+  }
+}
+
+resource "aws_iam_role" "github_actions_deploy" {
+  name               = "github-actions-deploy-role"
+  assume_role_policy = data.aws_iam_policy_document.github_actions_deploy_assume.json
+}
+
+resource "aws_iam_role_policy_attachment" "github_actions_deploy_admin" {
+  role       = aws_iam_role.github_actions_deploy.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}

@@ -1,0 +1,38 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: refactor
+      include: scope
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: terraform
+    directories:
+      - /terraform/bootstrap
+      - /terraform/cognito-sandbox
+      - /terraform/common
+      - /terraform/jentz.co
+      - /terraform/modules/amplify
+      - /terraform/modules/s3
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: refactor
+      include: scope
+    groups:
+      aws-provider:
+        patterns:
+          - "hashicorp/aws"
+      other-providers:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "hashicorp/aws"

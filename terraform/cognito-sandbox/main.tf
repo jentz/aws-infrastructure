@@ -29,7 +29,7 @@ resource "aws_cognito_user_pool" "pool" {
     allow_admin_create_user_only = false
   }
   email_configuration {
-    email_sending_account  = "COGNITO_DEFAULT"
+    email_sending_account = "COGNITO_DEFAULT"
   }
   password_policy {
     minimum_length                   = 8
@@ -80,7 +80,7 @@ resource "aws_cognito_user_pool" "pool" {
     case_sensitive = false
   }
   verification_message_template {
-    default_email_option  = "CONFIRM_WITH_CODE"
+    default_email_option = "CONFIRM_WITH_CODE"
   }
 
 }

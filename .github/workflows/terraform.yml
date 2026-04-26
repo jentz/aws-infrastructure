@@ -1,5 +1,12 @@
 name: Terraform
 
+run-name: >-
+  ${{ github.event_name == 'pull_request'
+      && format('Plan for PR #{0}: {1}', github.event.pull_request.number, github.event.pull_request.title)
+      || github.event_name == 'push'
+      && format('Apply on main: {0}', github.event.head_commit.message)
+      || format('Manual plan on {0}', github.ref_name) }}
+
 on:
   pull_request:
     paths:
@@ -9,6 +16,7 @@ on:
       - main
     paths:
       - 'terraform/**'
+  workflow_dispatch:
 
 permissions:
   id-token: write
@@ -28,7 +36,6 @@ jobs:
   plan:
     name: Plan ${{ matrix.dir }}
     runs-on: ubuntu-latest
-    environment: plan
     strategy:
       fail-fast: false
       matrix:
